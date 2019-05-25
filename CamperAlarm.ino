@@ -1,44 +1,44 @@
 /*
-  Button
+ Author:      WCPinyan
+ Date:        5/25/2019
+ Micro:       TI MSP-EXP430G2-2553
 
-  Turns on and off a light emitting diode(LED) connected to digital
-  pin 13, when pressing a pushbutton attached to pin 2.
+ Description: Automatic light and alarm for
+ truck camper top (ARE) with 3 doors.
+ Chip is put to sleep once all doors are closed and
+ is triggered awake by opening any door.
+ Operator has 15 sec. to push out-of-sight button to
+ disable alarm.
+ Alarm will sound for 10 minutes unless button 
+ pressed or time-out occurs.  Time-out prevents
+ truck battery from being drained.
+ Ambient sensor prob not necessary since the inside of 
+ the shell always needs light (tinted windows.)
 
+ The launchpad was only used during development. The 2553 was then
+ removed and installed on protoboard (via removable socket to accommodate
+ further programming.) Thus, LED code below only applicable for dev and testing.
 
-  The circuit:
-   LED attached from pin 13 to ground
-   pushbutton attached to pin 2 from +3.3V
-   10K resistor attached to pin 2 from ground
+ 3 voltage levels: 12V  from vehicle battery(main power and alarm siren)
+                    6V  for LED light and feed for conversion to 3.3V
+                    3V3 for 2553 chip.
+    12V-6V  SMAKN DC-DC Buck Power Converter. Amazon
+    6V-3V2: https://www.youtube.com/watch?v=J66_8P043ko&t=621s Thanks to
+            ITKindaWorks.
 
-   Note: on most Arduinos there is already an LED on the board
-  attached to pin 13.
-
-
-  created 2005
-  by DojoDave <http://www.0j0.org>
-  modified 30 Aug 2011
-  by Tom Igoe
-  modified Apr 27 2012
-  by Robert Wessels
-
-  This example code is in the public domain.
-
-  http://www.arduino.cc/en/Tutorial/Button
+ 
 */
 
-// constants won't change. They're used here to
-// set pin numbers:
 const int redLed = RED_LED;
 const int buttonPin = 8;     // the number of the pushbutton pin(was PUSH2).
 const int ledPin =  GREEN_LED;      // the number of the LED pin
 const int ambientLight = 7;
 const int alarmPin = 9;
-const int lightPin = 18; //hook this to a transistor
-const int interruptPin1 = P1_3; //opening door
-//const int interruptPin2 = P1_4; //closing door
+const int lightPin = 18; // 6V controlled by TIP120
+const int interruptPin1 = P1_3; // 12V controlled by TIP120
 const bool OFF = false;
 const bool ON = true;
-bool on = true;
+
 //********** variables **********
 
 int light = 0;
@@ -47,16 +47,16 @@ bool alarmState = OFF;
 bool firstTimeThru = true;
 int startTime = 0;
 int elapsed = 0;
+int buttonState = 0; // kills alarm after door open
 
-// variables will change:
-int buttonState = 0;         // variable for reading the pushbutton status
+// handles interrupt from sleep
 void buttonISR() {
   wakeup();
-  delay(50);
+  delay(50); //give time for chip warmup.
   Serial.println("waking up");
   doorOpen=true;
 }
-//set alarm triggered in On or Off state.
+//set alarm triggered for On or Off state.
 void SetAlarmTrigger(bool state) {
 
   alarmState = state;
@@ -108,7 +108,7 @@ void doorClosed(){
 }
 void loop() {
   digitalWrite(ledPin, HIGH);
-  Serial.println("Enter Loop");
+ // Serial.println("Enter Loop");
   delay(50);
   doorOpen = digitalRead(interruptPin1);
   
@@ -137,11 +137,11 @@ void loop() {
   delay(500);
 
 
-  //Serial.println(light);
+  //Serial.println(light); //test ambient light level
   delay(10);
   if (!doorOpen) {
     firstTimeThru = true; //set up for the awake function to set the alarm again.
-    Serial.println("Doors all closed, going to sleep.");
+    //Serial.println("Doors all closed, going to sleep.");
     digitalWrite(ledPin, LOW);
     digitalWrite(lightPin, LOW);
     suspend();
@@ -149,24 +149,24 @@ void loop() {
     light = analogRead(ambientLight);
     NeedLight();
   }
-  delay(2000);//take this out!!!!!!!!!!!!!!
+  delay(2000);//this prob not needed
 }
 void NeedLight() {
   if (doorOpen) {
     digitalWrite(redLed, HIGH);
-    Serial.println("A door is open");
-    Serial.println(light);
+    //Serial.println("A door is open");
+    //Serial.println(light);
     if (light < 700 ) {
-      Serial.println("Light On");
+      // Serial.println("Light On");
       //digitalWrite(redLed, HIGH);
       digitalWrite(lightPin,HIGH);
     } else {
-      Serial.println("Light OFF");
+      //Serial.println("Light OFF");
       //digitalWrite(redLed, LOW);
       digitalWrite(lightPin,LOW);
     }
   } else {
-    Serial.println("Light OFF");
+    // Serial.println("Light OFF");
     digitalWrite(redLed, LOW);
     digitalWrite(lightPin, LOW);
   }
